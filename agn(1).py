@@ -533,24 +533,24 @@ else:
                     st.error(f"Erro ao fechar horários: {e}")
 
     with st.expander("🔓 Desbloquear um Intervalo de Horários"):
-    with st.form("form_desbloquear_horario", clear_on_submit=True):
-        horarios_tabela = [f"{h:02d}:{m:02d}" for h in range(7, 20) for m in (0, 30)]
+        with st.form("form_desbloquear_horario", clear_on_submit=True):
+            horarios_tabela = [f"{h:02d}:{m:02d}" for h in range(7, 20) for m in (0, 30)]
         
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            horario_inicio_desbloq = st.selectbox("Início", options=horarios_tabela, key="desbloq_inicio")
-        with col2:
-            horario_fim_desbloq = st.selectbox("Fim", options=horarios_tabela, key="desbloq_fim", index=len(horarios_tabela)-1)
-        with col3:
-            barbeiro_desbloquear = st.selectbox("Barbeiro", options=barbeiros, key="desbloq_barbeiro")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                horario_inicio_desbloq = st.selectbox("Início", options=horarios_tabela, key="desbloq_inicio")
+            with col2:
+                horario_fim_desbloq = st.selectbox("Fim", options=horarios_tabela, key="desbloq_fim", index=len(horarios_tabela)-1)
+            with col3:
+                barbeiro_desbloquear = st.selectbox("Barbeiro", options=barbeiros, key="desbloq_barbeiro")
 
-        if st.form_submit_button("Confirmar Desbloqueio", use_container_width=True):
-            horarios_para_desbloquear = horarios_tabela[horarios_tabela.index(horario_inicio_desbloq):horarios_tabela.index(horario_fim_desbloq)+1]
-            for horario in horarios_para_desbloquear:
-                desbloquear_horario_especifico(data_obj, horario, barbeiro_desbloquear)
-            st.success("Horários desbloqueados com sucesso!")
-            time.sleep(1)
-            st.rerun()
+            if st.form_submit_button("Confirmar Desbloqueio", use_container_width=True):
+                horarios_para_desbloquear = horarios_tabela[horarios_tabela.index(horario_inicio_desbloq):horarios_tabela.index(horario_fim_desbloq)+1]
+                for horario in horarios_para_desbloquear:
+                    desbloquear_horario_especifico(data_obj, horario, barbeiro_desbloquear)
+                st.success("Horários desbloqueados com sucesso!")
+                time.sleep(1)
+                st.rerun()
 
     # --- OTIMIZAÇÃO DE CARREGAMENTO ---
     # 1. Busca todos os dados do dia de uma só vez, antes de desenhar a tabela
@@ -638,6 +638,7 @@ else:
                         st.rerun()
                         
     
+
 
 
 
