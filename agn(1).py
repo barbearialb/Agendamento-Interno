@@ -243,6 +243,27 @@ def fechar_horario(data_obj, horario, barbeiro):
     except Exception as e:
         st.error(f"Erro ao fechar horário: {e}")
         return False
+    # ADICIONE ESTA NOVA FUNÇÃO NO SEU BLOCO DE FUNÇÕES DE BACKEND
+
+def desbloquear_horario_especifico(data_obj, horario, barbeiro):
+    """
+    Remove um agendamento/bloqueio específico. É a mesma lógica de cancelar,
+    mas com um nome dedicado para a nova funcionalidade.
+    """
+    if not db: return False
+    # CONVERSÃO CRÍTICA: Usa o objeto de data para encontrar o ID no formato correto.
+    data_para_id = data_obj.strftime('%Y-%m-%d')
+    chave_agendamento = f"{data_para_id}_{horario}_{barbeiro}"
+    agendamento_ref = db.collection('agendamentos').document(chave_agendamento)
+    try:
+        # Apenas deleta o documento se ele existir.
+        doc = agendamento_ref.get()
+        if doc.exists:
+            agendamento_ref.delete()
+        return True # Retorna sucesso mesmo que o horário já estivesse livre
+    except Exception as e:
+        st.error(f"Erro ao desbloquear horário: {e}")
+        return False
 
 # --- INICIALIZAÇÃO DO ESTADO DA SESSÃO ---
 if 'view' not in st.session_state:
@@ -483,13 +504,53 @@ else:
     data_str = data_obj.strftime('%d/%m/%Y')
 
     # Botão para ir para a tela de fechar horários em lote
-    if st.button("🔒 Fechar Múltiplos Horários", use_container_width=True):
-        st.session_state.view = 'fechar'
-        # Salvamos o objeto de data para a próxima tela usar
-        st.session_state.data_obj_selecionada = data_obj
-        st.rerun()
+    with st.expander("🔒 Fechar um Intervalo de Horários"):
+        with st.form("form_fechar_horario", clear_on_submit=True):
+            horarios_tabela = [f"{h:02d}:{m:02d}" for h in range(7, 20) for m in (0, 30)]
+        
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                horario_inicio = st.selectbox("Início", options=horarios_tabela, key="fecha_inicio")
+            with col2:
+                horario_fim = st.selectbox("Fim", options=horarios_tabela, key="fecha_fim", index=len(horarios_tabela)-1)
+            with col3:
+                barbeiro_fechar = st.selectbox("Barbeiro", options=barbeiros, key="fecha_barbeiro")
 
-    st.divider()
+            if st.form_submit_button("Confirmar Fechamento", use_container_width=True):
+                try:
+                    start_index = horarios_tabela.index(horario_inicio)
+                    end_index = horarios_tabela.index(horario_fim)
+                    if start_index > end_index:
+                        st.error("O horário de início deve ser anterior ao final.")
+                    else:
+                        horarios_para_fechar = horarios_tabela[start_index:end_index+1]
+                        for horario in horarios_para_fechar:
+                            fechar_horario(data_obj, horario, barbeiro_fechar)
+                        st.success("Horários fechados com sucesso!")
+                        time.sleep(1)
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao fechar horários: {e}")
+
+    with st.expander("🔓 Desbloquear um Intervalo de Horários"):
+    with st.form("form_desbloquear_horario", clear_on_submit=True):
+        horarios_tabela = [f"{h:02d}:{m:02d}" for h in range(7, 20) for m in (0, 30)]
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            horario_inicio_desbloq = st.selectbox("Início", options=horarios_tabela, key="desbloq_inicio")
+        with col2:
+            horario_fim_desbloq = st.selectbox("Fim", options=horarios_tabela, key="desbloq_fim", index=len(horarios_tabela)-1)
+        with col3:
+            barbeiro_desbloquear = st.selectbox("Barbeiro", options=barbeiros, key="desbloq_barbeiro")
+
+        if st.form_submit_button("Confirmar Desbloqueio", use_container_width=True):
+            horarios_para_desbloquear = horarios_tabela[horarios_tabela.index(horario_inicio_desbloq):horarios_tabela.index(horario_fim_desbloq)+1]
+            for horario in horarios_para_desbloquear:
+                desbloquear_horario_especifico(data_obj, horario, barbeiro_desbloquear)
+            st.success("Horários desbloqueados com sucesso!")
+            time.sleep(1)
+            st.rerun()
 
     # --- OTIMIZAÇÃO DE CARREGAMENTO ---
     # 1. Busca todos os dados do dia de uma só vez, antes de desenhar a tabela
@@ -577,6 +638,7 @@ else:
                         st.rerun()
                         
     
+
 
 
 
