@@ -436,7 +436,7 @@ elif st.session_state.view == 'fechar':
     st.subheader(f"Data selecionada: {data_str_display}")
 
     # Lista de horários para os seletores
-    horarios_tabela = [f"{h:02d}:{m:02d}" for h in range(7, 20) for m in (0, 30)]
+    horarios_tabela = [f"{h:02d}:{m:02d}" for h in range(8, 20) for m in (0, 30)]
 
     with st.container(border=True):
         col1, col2 = st.columns(2)
@@ -506,7 +506,7 @@ else:
     # Botão para ir para a tela de fechar horários em lote
     with st.expander("🔒 Fechar um Intervalo de Horários"):
         with st.form("form_fechar_horario", clear_on_submit=True):
-            horarios_tabela = [f"{h:02d}:{m:02d}" for h in range(7, 20) for m in (0, 30)]
+            horarios_tabela = [f"{h:02d}:{m:02d}" for h in range(8, 20) for m in (0, 30)]
         
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -534,7 +534,7 @@ else:
 
     with st.expander("🔓 Desbloquear um Intervalo de Horários"):
         with st.form("form_desbloquear_horario", clear_on_submit=True):
-            horarios_tabela = [f"{h:02d}:{m:02d}" for h in range(7, 20) for m in (0, 30)]
+            horarios_tabela = [f"{h:02d}:{m:02d}" for h in range(8, 20) for m in (0, 30)]
         
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -564,7 +564,7 @@ else:
         header_cols[i+1].markdown(f"### {barbeiro}")
     
     # Geração do Grid Interativo
-    horarios_tabela = [f"{h:02d}:{m:02d}" for h in range(7, 20) for m in (0, 30)]
+    horarios_tabela = [f"{h:02d}:{m:02d}" for h in range(8, 20) for m in (0, 30)]
 
     for horario in horarios_tabela:
         grid_cols = st.columns([1.5, 3, 3])
@@ -638,6 +638,7 @@ else:
                         st.rerun()
                         
     
+
 
 
 
