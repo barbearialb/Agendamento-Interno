@@ -114,27 +114,86 @@ def enviar_email(assunto, mensagem):
     except Exception as e:
         st.error(f"Erro ao enviar e-mail: {e}")
 
-def salvar_agendamento(data, horario, nome, telefone, servicos, barbeiro):
-    if not db: return False
-    chave_agendamento = f"{data}_{horario}_{barbeiro}"
+def buscar_agendamentos_do_dia(data_obj):
+    """
+    Busca todos os agendamentos do dia em UMA ÚNICA CONSULTA e retorna um dicionário.
+    A chave é o ID do documento, e o valor são os dados do agendamento.
+    """
+    if not db:
+        st.error("Firestore não inicializado.")
+        return {}
+    
+    ocupados_map = {}
+    prefixo_id = data_obj.strftime('%Y-%m-%d')
     try:
-        data_obj = datetime.strptime(data, '%d/%m/%Y')
+        docs = db.collection('agendamentos') \
+                 .order_by(FieldPath.document_id()) \
+                 .start_at([prefixo_id]) \
+                 .end_at([prefixo_id + '\uf8ff']) \
+                 .stream()
+        for doc in docs:
+            ocupados_map[doc.id] = doc.to_dict()
+    except Exception as e:
+        st.error(f"Erro ao buscar agendamentos do dia: {e}")
+    return ocupados_map
+
+# FUNÇÕES DE ESCRITA (JÁ CORRIGIDAS NA NOSSA CONVERSA)
+def salvar_agendamento(data_obj, horario, nome, telefone, servicos, barbeiro):
+    if not db: return False
+    data_para_id = data_obj.strftime('%Y-%m-%d')
+    chave_agendamento = f"{data_para_id}_{horario}_{barbeiro}"
+    try:
         db.collection('agendamentos').document(chave_agendamento).set({
-            'nome': nome,
-            'telefone': telefone,
-            'servicos': servicos,
-            'barbeiro': barbeiro,
-            'data': data_obj,
-            'horario': horario
+            'nome': nome, 'telefone': telefone, 'servicos': servicos,
+            'barbeiro': barbeiro, 'data': data_obj, 'horario': horario
         })
         return True
     except Exception as e:
         st.error(f"Erro ao salvar agendamento: {e}")
         return False
 
-def cancelar_agendamento(data, horario, barbeiro):
+def bloquear_horario(data_obj, horario, barbeiro, motivo="BLOQUEADO"):
+    """ Bloqueia um horário, criando o ID correto para sincronizar com o sistema do cliente. """
+    if not db: return False
+    data_para_id = data_obj.strftime('%Y-%m-%d')
+    
+    # Se o motivo é "BLOQUEADO" (para Corte+Barba), o ID precisa ter um sufixo especial.
+    if motivo == "BLOQUEADO":
+        chave_bloqueio = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO"
+    else: # Para outros motivos internos (como "Fechado")
+        chave_bloqueio = f"{data_para_id}_{horario}_{barbeiro}"
+
+    try:
+        db.collection('agendamentos').document(chave_bloqueio).set({
+            'nome': motivo, 'telefone': "INTERNO", 'servicos': [],
+            'barbeiro': barbeiro, 'data': data_obj, 'horario': horario
+        })
+        return True
+    except Exception as e:
+        st.error(f"Erro ao bloquear horário: {e}")
+        return False
+
+def verificar_disponibilidade_especifica(data_obj, horario, barbeiro):
+    """ Verifica de forma eficiente se um único horário está livre. """
+    if not db: return False
+    data_para_id = data_obj.strftime('%Y-%m-%d')
+    id_padrao = f"{data_para_id}_{horario}_{barbeiro}"
+    id_bloqueado = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO"
+    try:
+        doc_padrao_ref = db.collection('agendamentos').document(id_padrao)
+        doc_bloqueado_ref = db.collection('agendamentos').document(id_bloqueado)
+        
+        # Se qualquer um dos dois documentos existir, o horário não está livre.
+        if doc_padrao_ref.get().exists or doc_bloqueado_ref.get().exists:
+            return False # Indisponível
+        return True # Disponível
+    except Exception:
+        return False
+
+def cancelar_agendamento(data_obj, horario, barbeiro):
     if not db: return None
-    chave_agendamento = f"{data}_{horario}_{barbeiro}"
+    data_para_id = data_obj.strftime('%Y-%m-%d')
+    chave_agendamento = f"{data_para_id}_{horario}_{barbeiro}"
     agendamento_ref = db.collection('agendamentos').document(chave_agendamento)
     try:
         doc = agendamento_ref.get()
@@ -147,99 +206,14 @@ def cancelar_agendamento(data, horario, barbeiro):
         st.error(f"Erro ao cancelar agendamento: {e}")
         return None
 
-def bloquear_horario(data, horario, barbeiro, motivo="Almoço"):
+def fechar_horario(data_obj, horario, barbeiro):
     if not db: return False
-    chave_bloqueio = f"{data}_{horario}_{barbeiro}"
+    data_para_id = data_obj.strftime('%Y-%m-%d')
+    chave_bloqueio = f"{data_para_id}_{horario}_{barbeiro}"
     try:
-        data_obj = datetime.strptime(data, '%d/%m/%Y')
         db.collection('agendamentos').document(chave_bloqueio).set({
-            'nome': motivo, 'telefone': "INTERNO", 'servicos': [],
+            'nome': "Fechado", 'telefone': "INTERNO", 'servicos': [],
             'barbeiro': barbeiro, 'data': data_obj, 'horario': horario
-        })
-        return True
-    except Exception as e:
-        st.error(f"Erro ao bloquear horário: {e}")
-        return False
-
-def desbloquear_horario_seguinte(data, horario, barbeiro):
-    if not db: return
-    try:
-        horario_dt = datetime.strptime(horario, '%H:%M') + timedelta(minutes=30)
-        horario_seguinte_str = horario_dt.strftime('%H:%M')
-        chave_bloqueio = f"{data}_{horario_seguinte_str}_{barbeiro}_BLOQUEADO"
-        bloqueio_ref = db.collection('agendamentos').document(chave_bloqueio)
-        if bloqueio_ref.get().exists:
-            bloqueio_ref.delete()
-            st.info(f"Horário seguinte ({horario_seguinte_str}) desbloqueado.")
-    except Exception as e:
-        st.warning(f"Não foi possível desbloquear o horário seguinte: {e}")
-
-
-def verificar_status_horario(data, horario, barbeiro):
-    """Verifica o status e retorna (status, dados_do_agendamento)."""
-    if not db: return ("indisponivel", None)
-
-    # 1. Define a chave de agendamento PADRÃO
-    chave_agendamento_padrao = f"{data}_{horario}_{barbeiro}"
-    doc_ref_padrao = db.collection('agendamentos').document(chave_agendamento_padrao)
-    
-    # 2. Define a chave de BLOQUEIO do sistema do cliente (com _BLOQUEADO)
-    chave_agendamento_bloqueado = f"{data}_{horario}_{barbeiro}_BLOQUEADO"
-    doc_ref_bloqueado = db.collection('agendamentos').document(chave_agendamento_bloqueado)
-
-    try:
-        # Tenta buscar os dois documentos
-        doc_padrao = doc_ref_padrao.get()
-        doc_bloqueado = doc_ref_bloqueado.get()
-
-        # Verifica se o documento PADRÃO existe
-        if doc_padrao.exists:
-            dados = doc_padrao.to_dict()
-            nome = dados.get("nome", "Ocupado")
-            if nome == "Almoço":
-                return ("almoco", dados)
-            elif nome == "BLOQUEADO":
-                 return("ocupado", dados) 
-            elif nome == "Fechado":
-                return ("fechado", dados)
-            return ("ocupado", dados)
-            
-        # Se o padrão não existe, verifica se o documento de BLOQUEIO (do outro sistema) existe
-        elif doc_bloqueado.exists:
-            # Se encontrou o documento com _BLOQUEADO no final do ID, está ocupado.
-            # Retornamos dados genéricos de bloqueio.
-            return ("ocupado", {"nome": "BLOQUEADO"}) 
-
-        # Se nenhum dos dois documentos existe, o horário está disponível
-        else:
-            return ("disponivel", None)
-            
-    except Exception as e:
-        print(f"Erro ao verificar status: {e}")
-        return ("indisponivel", None)
-
-def verificar_disponibilidade_horario_seguinte(data, horario, barbeiro):
-    horario_seguinte_dt = datetime.strptime(horario, '%H:%M') + timedelta(minutes=30)
-    if horario_seguinte_dt.hour >= 20: return False
-    horario_seguinte_str = horario_seguinte_dt.strftime('%H:%M')
-    status, _ = verificar_status_horario(data, horario_seguinte_str, barbeiro)
-    return status == "disponivel"
-
-# NOVA FUNÇÃO PARA FECHAR HORÁRIOS EM LOTE
-def fechar_horario(data, horario, barbeiro, motivo="Fechado"):
-    """Salva um registro especial para marcar um horário como Fechado."""
-    if not db: return False
-    chave_fechamento = f"{data}_{horario}_{barbeiro}"
-    try:
-        data_obj = datetime.strptime(data, '%d/%m/%Y')
-        # Cria ou sobrescreve o documento com o status "Fechado"
-        db.collection('agendamentos').document(chave_fechamento).set({
-            'nome': motivo,
-            'telefone': "INTERNO",
-            'servicos': [],
-            'barbeiro': barbeiro,
-            'data': data_obj,
-            'horario': horario
         })
         return True
     except Exception as e:
@@ -257,9 +231,18 @@ if 'view' not in st.session_state:
 # ---- MODAL DE AGENDAMENTO ----
 if st.session_state.view == 'agendar':
     info = st.session_state.agendamento_info
+     # --- MUDANÇA PRINCIPAL ---
+    # Pegamos o OBJETO de data, que é o correto para as funções
+    data_obj = info['data_obj']
+    # E criamos uma string separada APENAS para mostrar na tela
+    data_str_display = data_obj.strftime('%d/%m/%Y')
+    
+    horario = info['horario']
+    barbeiro = info['barbeiro']
+    
     st.header("Confirmar Agendamento")
-    st.subheader(f"🗓️ {info['data_str']} às {info['horario']} com {info['barbeiro']}")
-
+    st.subheader(f"🗓️ {data_str_display} às {horario} com {barbeiro}")
+    
     with st.container(border=True):
         nome_cliente = st.text_input("Nome do Cliente*", key="cliente_nome")
         servicos_selecionados = st.multiselect("Serviços (opcional)", servicos, key="servicos_selecionados")
@@ -278,7 +261,9 @@ if st.session_state.view == 'agendar':
                     with st.spinner("Processando..."):
                         precisa_bloquear_proximo = False
                         if "Barba" in servicos_selecionados and any(c in servicos_selecionados for c in ["Tradicional", "Social", "Degradê", "Navalhado"]):
-                            if verificar_disponibilidade_horario_seguinte(info['data_str'], info['horario'], info['barbeiro']):
+                            horario_seguinte_dt = datetime.strptime(horario, '%H:%M') + timedelta(minutes=30)
+                            horario_seguinte_str = horario_seguinte_dt.strftime('%H:%M')
+                            if verificar_disponibilidade_especifica(data_obj, horario_seguinte_str, barbeiro):
                                 precisa_bloquear_proximo = True
                             else:
                                 st.error("Não é possível agendar Corte+Barba. O horário seguinte não está disponível.")
@@ -288,7 +273,7 @@ if st.session_state.view == 'agendar':
                             if precisa_bloquear_proximo:
                                 horario_dt = datetime.strptime(info['horario'], '%H:%M') + timedelta(minutes=30)
                                 horario_seguinte_str = horario_dt.strftime('%H:%M')
-                                bloquear_horario(info['data_str'], horario_seguinte_str, info['barbeiro'], "BLOQUEADO")
+                                bloquear_horario(data_obj, horario_seguinte_str, info['barbeiro'], "BLOQUEADO")
 
                             st.success(f"Agendamento para {nome_cliente} confirmado!")
                             assunto_email = f"Novo Agendamento: {nome_cliente} em {info['data_str']}"
@@ -530,4 +515,5 @@ else:
                         }
                         st.rerun()
                         
+
 
