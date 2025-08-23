@@ -615,7 +615,7 @@ else:
                     ' onclick="document.getElementById('{key}').click()">{texto_botao}</button>
                 """
                 st.markdown(botao_html, unsafe_allow_html=True)
-                st.markdown(f"<div style='text-align: center; font-size: 12px; color: #AAA;'>{barbeiro.split(' ')[0]}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align: center; font-size: 12px; color: #AAA;'>{barbeiro}</div>", unsafe_allow_html=True)
 
                 # O botão invisível que aciona a lógica, com as chamadas CORRIGIDAS
                 if st.button("", key=key, disabled=not is_clicavel):
@@ -638,6 +638,7 @@ else:
                         st.rerun()
                         
     
+
 
 
 
