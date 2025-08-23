@@ -11,7 +11,11 @@ import time
 # --- CONFIGURAÇÃO INICIAL E ESTILOS ---
 
 # Configuração da página para layout mais amplo
-st.set_page_config(layout="wide")
+st.set_page_config(
+    layout="wide",
+    page_title="Agenda - Barbearia",
+    page_icon="logo_barb.png"
+)
 
 # CSS customizado para colorir os botões da tabela e centralizar o texto
 # CSS customizado para criar uma grade de agendamentos visual e responsiva
@@ -670,6 +674,7 @@ else:
                         st.rerun()
                         
     
+
 
 
 
