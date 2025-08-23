@@ -324,7 +324,7 @@ if st.session_state.view == 'agendar':
     # Botão de voltar, também indentado corretamente
     if st.button("⬅️ Voltar para a Agenda"):
         st.session_state.view = 'agenda'
-        st.rerun())
+        st.rerun()
 
 
 # ---- MODAL DE CANCELAMENTO ----
@@ -570,4 +570,5 @@ else:
                         st.rerun()
                         
     
+
 
