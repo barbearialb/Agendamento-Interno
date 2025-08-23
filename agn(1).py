@@ -13,7 +13,7 @@ import time
 # Configuração da página para layout mais amplo
 st.set_page_config(
     layout="wide",
-    page_title="Agenda - Barbearia",
+    page_title="Agendamento Interno - Barbearia Lucas Borges",
     page_icon="logo_barb.png"
 )
 
@@ -674,6 +674,7 @@ else:
                         st.rerun()
                         
     
+
 
 
 
