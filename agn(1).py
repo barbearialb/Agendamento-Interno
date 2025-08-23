@@ -1,6 +1,7 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
+from google.cloud.firestore_v1.field_path import FieldPath
 from datetime import datetime, timedelta
 import smtplib
 from email.mime.text import MIMEText
@@ -254,72 +255,76 @@ if 'view' not in st.session_state:
 
 # ---- MODAL DE AGENDAMENTO ----
 if st.session_state.view == 'agendar':
+    # Todo o código abaixo está corretamente indentado ("dentro" do if)
     info = st.session_state.agendamento_info
-     # --- MUDANÇA PRINCIPAL ---
-    # Pegamos o OBJETO de data, que é o correto para as funções
+    
+    # Pegamos o objeto de data para as funções
     data_obj = info['data_obj']
-    # E criamos uma string separada APENAS para mostrar na tela
+    # Criamos a string de data para mostrar na tela
     data_str_display = data_obj.strftime('%d/%m/%Y')
     
     horario = info['horario']
     barbeiro = info['barbeiro']
     
     st.header("Confirmar Agendamento")
-# Usamos a variável correta para exibição
-st.subheader(f"🗓️ {data_str_display} às {horario} com {barbeiro}")
+    st.subheader(f"🗓️ {data_str_display} às {horario} com {barbeiro}")
 
-with st.container(border=True):
-    nome_cliente = st.text_input("Nome do Cliente*", key="cliente_nome")
-    servicos_selecionados = st.multiselect("Serviços (opcional)", servicos, key="servicos_selecionados")
+    with st.container(border=True):
+        nome_cliente = st.text_input("Nome do Cliente*", key="cliente_nome")
+        
+        # Sua lista de serviços original
+        servicos = ["Tradicional", "Social", "Degradê", "Pezim", "Navalhado", "Barba", "Abordagem de visagismo", "Consultoria de visagismo"]
+        servicos_selecionados = st.multiselect("Serviços", servicos, key="servicos_selecionados")
 
-    # Sua validação de Visagismo (está correta)
-    is_visagismo = any(s in servicos_selecionados for s in ["Abordagem de visagismo", "Consultoria de visagismo"])
-    if is_visagismo and info['barbeiro'] == 'Aluizio':
-        st.error("Serviços de visagismo são apenas com Lucas Borges.")
-    else:
-        cols = st.columns(3)
-        if cols[0].button("✅ Confirmar Agendamento", type="primary", use_container_width=True):
-            if not nome_cliente:
-                st.error("O nome do cliente é obrigatório!")
-            else:
-                with st.spinner("Processando..."):
-                    precisa_bloquear_proximo = False
-                    if "Barba" in servicos_selecionados and any(c in servicos_selecionados for c in ["Tradicional", "Social", "Degradê", "Navalhado"]):
-                        horario_seguinte_dt = datetime.strptime(horario, '%H:%M') + timedelta(minutes=30)
-                        horario_seguinte_str = horario_seguinte_dt.strftime('%H:%M')
-                        if verificar_disponibilidade_especifica(data_obj, horario_seguinte_str, barbeiro):
-                            precisa_bloquear_proximo = True
+        # Sua validação de Visagismo (mantida)
+        is_visagismo = any(s in servicos_selecionados for s in ["Abordagem de visagismo", "Consultoria de visagismo"])
+        if is_visagismo and barbeiro == 'Aluizio':
+            st.error("Serviços de visagismo são apenas com Lucas Borges.")
+        else:
+            cols = st.columns(3)
+            if cols[0].button("✅ Confirmar Agendamento", type="primary", use_container_width=True):
+                if not nome_cliente:
+                    st.error("O nome do cliente é obrigatório!")
+                else:
+                    with st.spinner("Processando..."):
+                        # Sua lógica de bloquear o próximo horário (mantida e corrigida)
+                        precisa_bloquear_proximo = False
+                        if "Barba" in servicos_selecionados and any(c in servicos_selecionados for c in ["Tradicional", "Social", "Degradê", "Navalhado"]):
+                            horario_seguinte_dt = datetime.strptime(horario, '%H:%M') + timedelta(minutes=30)
+                            horario_seguinte_str = horario_seguinte_dt.strftime('%H:%M')
+                            if verificar_disponibilidade_especifica(data_obj, horario_seguinte_str, barbeiro):
+                                precisa_bloquear_proximo = True
+                            else:
+                                st.error("Não é possível agendar Corte+Barba. O horário seguinte não está disponível.")
+                                st.stop()
+
+                        # Chamada da função de salvar com a variável correta (data_obj)
+                        if salvar_agendamento(data_obj, horario, nome_cliente, "INTERNO", servicos_selecionados, barbeiro):
+                            if precisa_bloquear_proximo:
+                                bloquear_horario(data_obj, horario_seguinte_str, barbeiro, "BLOQUEADO")
+
+                            st.success(f"Agendamento para {nome_cliente} confirmado!")
+                            
+                            # E-mail enviado com a data formatada corretamente
+                            assunto_email = f"Novo Agendamento: {nome_cliente} em {data_str_display}"
+                            mensagem_email = (
+                                f"Agendamento interno:\n\nCliente: {nome_cliente}\nData: {data_str_display}\n"
+                                f"Horário: {horario}\nBarbeiro: {barbeiro}\n"
+                                f"Serviços: {', '.join(servicos_selecionados) if servicos_selecionados else 'Nenhum'}"
+                            )
+                            enviar_email(assunto_email, mensagem_email)
+                            
+                            st.cache_data.clear()
+                            st.session_state.view = 'agenda'
+                            time.sleep(2)
+                            st.rerun()
                         else:
-                            st.error("Não é possível agendar Corte+Barba. O horário seguinte não está disponível.")
-                            st.stop()
-
-                    # --- CORREÇÃO PRINCIPAL AQUI ---
-                    # Passamos o objeto 'data_obj' para a função, não a string.
-                    if salvar_agendamento(data_obj, horario, nome_cliente, "INTERNO", servicos_selecionados, barbeiro):
-                        if precisa_bloquear_proximo:
-                            bloquear_horario(data_obj, horario_seguinte_str, barbeiro, "BLOQUEADO")
-
-                        st.success(f"Agendamento para {nome_cliente} confirmado!")
-                        
-                        # --- CORREÇÃO NO E-MAIL ---
-                        # Usamos a variável 'data_str_display' para o e-mail
-                        assunto_email = f"Novo Agendamento: {nome_cliente} em {data_str_display}"
-                        mensagem_email = (
-                            f"Novo agendamento realizado:\n\n"
-                            f"Cliente: {nome_cliente}\n"
-                            f"Data: {data_str_display}\n"
-                            f"Horário: {horario}\n"
-                            f"Barbeiro: {barbeiro}\n"
-                            f"Serviços: {', '.join(servicos_selecionados) if servicos_selecionados else 'Nenhum'}"
-                        )
-                        enviar_email(assunto_email, mensagem_email)
-                        
-                        st.cache_data.clear()
-                        st.session_state.view = 'agenda' # <-- Corrigido para 'agenda' para voltar à tela principal
-                        time.sleep(2)
-                        st.rerun()
-                    else:
-                        st.error("Falha ao salvar. Tente novamente.")
+                            st.error("Falha ao salvar. Tente novamente.")
+    
+    # Botão de voltar, também indentado corretamente
+    if st.button("⬅️ Voltar para a Agenda"):
+        st.session_state.view = 'agenda'
+        st.rerun())
 
 
 # ---- MODAL DE CANCELAMENTO ----
@@ -565,3 +570,4 @@ else:
                         st.rerun()
                         
     
+
