@@ -589,27 +589,49 @@ else:
             # --- LÓGICA SDJ ADICIONADA AQUI ---
             dia_mes = data_obj.day
             mes_ano = data_obj.month
+            dia_semana = data_obj.weekday() # 0=Segunda, 6=Domingo
             is_intervalo_especial = (mes_ano == 7 and 10 <= dia_mes <= 19)
+            
+            hora_int = int(horario.split(':')[0])
 
-            if horario in ["07:00", "07:30"] and not is_intervalo_especial:
-                status, texto_botao, is_clicavel = "indisponivel", "SDJ", False
-            else:
-                # Se não for SDJ, continua com a lógica normal de verificação
+            # REGRA 0: DURANTE O INTERVALO ESPECIAL, QUASE TUDO É LIBERADO
+            if is_intervalo_especial:
+                # Durante o intervalo, a única regra é verificar agendamentos no banco
                 id_padrao = f"{data_para_id}_{horario}_{barbeiro}"
                 id_bloqueado = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO"
-
                 if id_padrao in ocupados_map:
                     dados_agendamento = ocupados_map[id_padrao]
                     nome = dados_agendamento.get("nome", "Ocupado")
-                    if nome == "Almoço":
-                        status, texto_botao = "almoco", "Almoço"
-                    elif nome == "Fechado":
-                        status, texto_botao = "fechado", "Fechado"
-                    else:
-                        status, texto_botao = "ocupado", nome
+                    status, texto_botao = ("fechado" if nome == "Fechado" else "ocupado"), nome
                 elif id_bloqueado in ocupados_map:
-                    status, texto_botao = "ocupado", "Bloqueado"
-                    dados_agendamento = {"nome": "BLOQUEADO"}
+                    status, texto_botao, dados_agendamento = "ocupado", "Bloqueado", {"nome": "BLOQUEADO"}
+
+            # REGRAS PARA DIAS NORMAIS (FORA DO INTERVALO ESPECIAL)
+            else:
+                # REGRA 1: Horários das 7h (SDJ)
+                if horario in ["07:00", "07:30"]:
+                    status, texto_botao, is_clicavel = "indisponivel", "SDJ", False
+                
+                # REGRA 2: Domingo é Fechado
+                elif dia_semana == 6: # 6 = Domingo
+                    status, texto_botao, is_clicavel = "fechado", "Fechado", False
+
+                # REGRA 3: Almoço durante a semana (12h e 13h)
+                elif dia_semana < 5 and hora_int in [12, 13]:
+                     status, texto_botao, is_clicavel = "almoco", "Almoço", False
+
+                # REGRA 4: Se não for nenhuma regra acima, busca no banco
+                else:
+                    id_padrao = f"{data_para_id}_{horario}_{barbeiro}"
+                    id_bloqueado = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO"
+                    if id_padrao in ocupados_map:
+                        dados_agendamento = ocupados_map[id_padrao]
+                        nome = dados_agendamento.get("nome", "Ocupado")
+                        if nome == "Almoço": status, texto_botao = "almoco", "Almoço"
+                        elif nome == "Fechado": status, texto_botao = "fechado", "Fechado"
+                        else: status, texto_botao = "ocupado", nome
+                    elif id_bloqueado in ocupados_map:
+                        status, texto_botao, dados_agendamento = "ocupado", "Bloqueado", {"nome": "BLOQUEADO"}
 
             # --- SEU CÓDIGO ORIGINAL DE BOTÕES RESTAURADO E ADAPTADO ---
             key = f"btn_{data_str}_{horario}_{barbeiro}"
@@ -648,6 +670,7 @@ else:
                         st.rerun()
                         
     
+
 
 
 
