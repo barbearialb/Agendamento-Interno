@@ -245,24 +245,34 @@ def fechar_horario(data_obj, horario, barbeiro):
         return False
     # ADICIONE ESTA NOVA FUNÇÃO NO SEU BLOCO DE FUNÇÕES DE BACKEND
 
+# NO SEU ARQUIVO agn.py, SUBSTITUA ESTA FUNÇÃO:
+
 def desbloquear_horario_especifico(data_obj, horario, barbeiro):
     """
-    Remove um agendamento/bloqueio específico. É a mesma lógica de cancelar,
-    mas com um nome dedicado para a nova funcionalidade.
+    Remove um agendamento/bloqueio específico, tentando apagar tanto o ID
+    padrão quanto o ID com sufixo _BLOQUEADO para garantir a limpeza.
     """
     if not db: return False
-    # CONVERSÃO CRÍTICA: Usa o objeto de data para encontrar o ID no formato correto.
+    
     data_para_id = data_obj.strftime('%Y-%m-%d')
-    chave_agendamento = f"{data_para_id}_{horario}_{barbeiro}"
-    agendamento_ref = db.collection('agendamentos').document(chave_agendamento)
+    
+    # Define os dois possíveis nomes de documento que podem estar ocupando o horário
+    chave_padrao = f"{data_para_id}_{horario}_{barbeiro}"
+    chave_bloqueado = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO"
+    
+    ref_padrao = db.collection('agendamentos').document(chave_padrao)
+    ref_bloqueado = db.collection('agendamentos').document(chave_bloqueado)
+    
     try:
-        # Apenas deleta o documento se ele existir.
-        doc = agendamento_ref.get()
-        if doc.exists:
-            agendamento_ref.delete()
-        return True # Retorna sucesso mesmo que o horário já estivesse livre
+        # Tenta apagar os dois documentos. O Firestore não gera erro se o documento não existir.
+        # Isso garante que tanto um agendamento normal quanto um bloqueio órfão sejam removidos.
+        ref_padrao.delete()
+        ref_bloqueado.delete()
+        
+        return True # Retorna sucesso, pois a intenção é deixar o horário livre.
+        
     except Exception as e:
-        st.error(f"Erro ao desbloquear horário: {e}")
+        st.error(f"Erro ao tentar desbloquear horário: {e}")
         return False
 
 # --- INICIALIZAÇÃO DO ESTADO DA SESSÃO ---
@@ -638,6 +648,7 @@ else:
                         st.rerun()
                         
     
+
 
 
 
