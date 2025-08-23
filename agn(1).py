@@ -144,9 +144,11 @@ def salvar_agendamento(data_obj, horario, nome, telefone, servicos, barbeiro):
     data_para_id = data_obj.strftime('%Y-%m-%d')
     chave_agendamento = f"{data_para_id}_{horario}_{barbeiro}"
     try:
+        # CORREÇÃO: Converte o objeto 'date' para 'datetime' antes de salvar
+        data_para_salvar = datetime.combine(data_obj, datetime.min.time())
         db.collection('agendamentos').document(chave_agendamento).set({
             'nome': nome, 'telefone': telefone, 'servicos': servicos,
-            'barbeiro': barbeiro, 'data': data_obj, 'horario': horario
+            'barbeiro': barbeiro, 'data': data_para_salvar, 'horario': horario
         })
         return True
     except Exception as e:
@@ -154,20 +156,15 @@ def salvar_agendamento(data_obj, horario, nome, telefone, servicos, barbeiro):
         return False
 
 def bloquear_horario(data_obj, horario, barbeiro, motivo="BLOQUEADO"):
-    """ Bloqueia um horário, criando o ID correto para sincronizar com o sistema do cliente. """
     if not db: return False
     data_para_id = data_obj.strftime('%Y-%m-%d')
-    
-    # Se o motivo é "BLOQUEADO" (para Corte+Barba), o ID precisa ter um sufixo especial.
-    if motivo == "BLOQUEADO":
-        chave_bloqueio = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO"
-    else: # Para outros motivos internos (como "Fechado")
-        chave_bloqueio = f"{data_para_id}_{horario}_{barbeiro}"
-
+    chave_bloqueio = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO" if motivo == "BLOQUEADO" else f"{data_para_id}_{horario}_{barbeiro}"
     try:
+        # CORREÇÃO: Converte o objeto 'date' para 'datetime' antes de salvar
+        data_para_salvar = datetime.combine(data_obj, datetime.min.time())
         db.collection('agendamentos').document(chave_bloqueio).set({
-            'nome': motivo, 'telefone': "INTERNO", 'servicos': [],
-            'barbeiro': barbeiro, 'data': data_obj, 'horario': horario
+            'nome': motivo, 'telefone': "INTERNO", 'servicos': [], 
+            'barbeiro': barbeiro, 'data': data_para_salvar, 'horario': horario
         })
         return True
     except Exception as e:
@@ -236,9 +233,11 @@ def fechar_horario(data_obj, horario, barbeiro):
     data_para_id = data_obj.strftime('%Y-%m-%d')
     chave_bloqueio = f"{data_para_id}_{horario}_{barbeiro}"
     try:
+        # CORREÇÃO: Converte o objeto 'date' para 'datetime' antes de salvar
+        data_para_salvar = datetime.combine(data_obj, datetime.min.time())
         db.collection('agendamentos').document(chave_bloqueio).set({
             'nome': "Fechado", 'telefone': "INTERNO", 'servicos': [],
-            'barbeiro': barbeiro, 'data': data_obj, 'horario': horario
+            'barbeiro': barbeiro, 'data': data_para_salvar, 'horario': horario
         })
         return True
     except Exception as e:
@@ -511,27 +510,35 @@ else:
         grid_cols[0].markdown(f"#### {horario}")
 
         for i, barbeiro in enumerate(barbeiros):
-            id_padrao = f"{data_para_id}_{horario}_{barbeiro}"
-            id_bloqueado = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO"
-
-            # Lógica de status usando o mapa local (rápido)
             status = "disponivel"
             texto_botao = "Disponível"
             dados_agendamento = {}
             is_clicavel = True
 
-            if id_padrao in ocupados_map:
-                dados_agendamento = ocupados_map[id_padrao]
-                nome = dados_agendamento.get("nome", "Ocupado")
-                if nome == "Almoço":
-                    status, texto_botao = "almoco", "Almoço"
-                elif nome == "Fechado":
-                    status, texto_botao = "fechado", "Fechado"
-                else:
-                    status, texto_botao = "ocupado", nome
-            elif id_bloqueado in ocupados_map:
-                status, texto_botao = "ocupado", "Bloqueado"
-                dados_agendamento = {"nome": "BLOQUEADO"}
+            # --- LÓGICA SDJ ADICIONADA AQUI ---
+            dia_mes = data_obj.day
+            mes_ano = data_obj.month
+            is_intervalo_especial = (mes_ano == 7 and 10 <= dia_mes <= 19)
+
+            if horario in ["07:00", "07:30"] and not is_intervalo_especial:
+                status, texto_botao, is_clicavel = "indisponivel", "SDJ", False
+            else:
+                # Se não for SDJ, continua com a lógica normal de verificação
+                id_padrao = f"{data_para_id}_{horario}_{barbeiro}"
+                id_bloqueado = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO"
+
+                if id_padrao in ocupados_map:
+                    dados_agendamento = ocupados_map[id_padrao]
+                    nome = dados_agendamento.get("nome", "Ocupado")
+                    if nome == "Almoço":
+                        status, texto_botao = "almoco", "Almoço"
+                    elif nome == "Fechado":
+                        status, texto_botao = "fechado", "Fechado"
+                    else:
+                        status, texto_botao = "ocupado", nome
+                elif id_bloqueado in ocupados_map:
+                    status, texto_botao = "ocupado", "Bloqueado"
+                    dados_agendamento = {"nome": "BLOQUEADO"}
 
             # --- SEU CÓDIGO ORIGINAL DE BOTÕES RESTAURADO E ADAPTADO ---
             key = f"btn_{data_str}_{horario}_{barbeiro}"
@@ -570,5 +577,6 @@ else:
                         st.rerun()
                         
     
+
 
 
