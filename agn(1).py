@@ -616,6 +616,9 @@ else:
                 if horario in ["07:00", "07:30"]:
                     status, texto_botao, is_clicavel = "indisponivel", "SDJ", False
                 
+                elif horario == "08:00" and barbeiro == "Lucas Borges":
+                    status, texto_botao, is_clicavel = "indisponivel", "Indisponível", False
+                
                 # REGRA 2: Domingo é Fechado
                 elif dia_semana == 6: # 6 = Domingo
                     status, texto_botao, is_clicavel = "fechado", "Fechado", False
@@ -623,6 +626,7 @@ else:
                 # REGRA 3: Almoço durante a semana (12h e 13h)
                 elif dia_semana < 5 and hora_int in [12, 13]:
                      status, texto_botao, is_clicavel = "almoco", "Almoço", False
+                
 
                 # REGRA 4: Se não for nenhuma regra acima, busca no banco
                 else:
@@ -640,12 +644,29 @@ else:
             # --- SEU CÓDIGO ORIGINAL DE BOTÕES RESTAURADO E ADAPTADO ---
             key = f"btn_{data_str}_{horario}_{barbeiro}"
             with grid_cols[i+1]:
-                cor_botao = "#28a745" if status == "disponivel" else "#dc3545" if status == "ocupado" else "#ffc107" if status == "almoco" else "#A9A9A9" if status == "fechado" else "#6c757d"
+                if status == 'disponivel':
+                    cor_fundo = '#28a745'  # Verde
+                    # O 'texto_botao' e 'is_clicavel' já foram definidos antes, mas aqui garantimos o padrão
+                elif status == 'ocupado':
+                    cor_fundo = '#dc3545'  # Vermelho
+                elif status == 'almoco':
+                    cor_fundo = '#ffc107'  # Laranja/Amarelo
+                    is_clicavel = False # Garante que não é clicável
+                elif status == 'indisponivel':
+                    cor_fundo = '#808080'  # Cinza
+                    is_clicavel = False # Garante que não é clicável
+                elif status == 'fechado':
+                     cor_fundo = '#A9A9A9' # Cinza claro
+                     is_clicavel = False
+                else: # Caso padrão
+                    cor_fundo = '#6c757d'
+                    is_clicavel = False
+                
                 cor_texto = "black" if status == "almoco" or status == "fechado" else "white"
                 
                 botao_html = f"""
                     <button style='
-                        background-color: {cor_botao}; color: {cor_texto}; border: none;
+                        background-color: {cor_fundo}; color: {cor_texto}; border: none;
                         border-radius: 6px; padding: 4px 8px; width: 100%; font-size: 12px;
                         font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
                     ' onclick="document.getElementById('{key}').click()">{texto_botao}</button>
@@ -674,6 +695,7 @@ else:
                         st.rerun()
                         
     
+
 
 
 
