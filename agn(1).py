@@ -581,8 +581,8 @@ else:
     horarios_tabela = [f"{h:02d}:{m:02d}" for h in range(8, 20) for m in (0, 30)]
 
     for horario in horarios_tabela:
-    grid_cols = st.columns([1.5, 3, 3])
-    grid_cols[0].markdown(f"#### {horario}")
+        grid_cols = st.columns([1.5, 3, 3])
+        grid_cols[0].markdown(f"#### {horario}")
 
     for i, barbeiro in enumerate(barbeiros):
         status = "disponivel"
@@ -683,4 +683,5 @@ else:
                         'dados': dados_agendamento
                     }
                     st.rerun()
+
 
