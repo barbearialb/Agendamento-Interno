@@ -642,107 +642,107 @@ else:
 
         # ===== CÓDIGO DOS BOTÕES RESTAURADO AO SEU PADRÃO ORIGINAL =====
         for horario in horarios_tabela:
-    grid_cols = st.columns([1.5, 3, 3])
-    grid_cols[0].markdown(f"#### {horario}")
+            grid_cols = st.columns([1.5, 3, 3])
+            grid_cols[0].markdown(f"#### {horario}")
 
-    for i, barbeiro in enumerate(barbeiros):
-        status = "disponivel"
-        texto_botao = "Disponível"
-        dados_agendamento = {}
-        is_clicavel = True
+        for i, barbeiro in enumerate(barbeiros):
+            status = "disponivel"
+            texto_botao = "Disponível"
+            dados_agendamento = {}
+            is_clicavel = True
 
         # --- LÓGICA DE DATAS E HORÁRIOS ---
-        dia_mes = data_obj.day
-        mes_ano = data_obj.month
-        dia_semana = data_obj.weekday()
-        is_intervalo_especial = (mes_ano == 7 and 10 <= dia_mes <= 19)
-        hora_int = int(horario.split(':')[0])
+            dia_mes = data_obj.day
+            mes_ano = data_obj.month
+            dia_semana = data_obj.weekday()
+            is_intervalo_especial = (mes_ano == 7 and 10 <= dia_mes <= 19)
+            hora_int = int(horario.split(':')[0])
 
         # REGRA 0: DURANTE O INTERVALO ESPECIAL
-        if is_intervalo_especial:
-            id_padrao = f"{data_para_id}_{horario}_{barbeiro}"
-            id_bloqueado = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO"
-            if id_padrao in ocupados_map:
-                dados_agendamento = ocupados_map[id_padrao]
-                nome = dados_agendamento.get("nome", "Ocupado")
-                status, texto_botao = ("fechado" if nome == "Fechado" else "ocupado"), nome
-            elif id_bloqueado in ocupados_map:
-                status, texto_botao, dados_agendamento = "ocupado", "Bloqueado", {"nome": "BLOQUEADO"}
-
-        # REGRAS PARA DIAS NORMAIS
-        else:
-            id_padrao = f"{data_para_id}_{horario}_{barbeiro}"
-            id_bloqueado = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO"
-
-            # REGRA 1: Horários Especiais (SDJ, 8h)
-            if horario in ["07:00", "07:30"]:
-                status, texto_botao, is_clicavel = "indisponivel", "SDJ", False
-            elif horario == "08:00" and barbeiro == "Lucas Borges":
-                status, texto_botao, is_clicavel = "indisponivel", "Indisponível", False
-            # REGRA 2: Domingo
-            elif dia_semana == 6:
-                status, texto_botao, is_clicavel = "fechado", "Fechado", False
-            # REGRA 3: Almoço
-            elif dia_semana < 5 and hora_int in [12, 13]:
-                dados_agendamento = ocupados_map.get(id_padrao)
-                if dados_agendamento and dados_agendamento.get('nome') == 'Fechado':
-                    status, texto_botao, is_clicavel = "fechado", "Fechado", True
-                else:
-                    status, texto_botao, is_clicavel = "almoco", "Almoço", True
-            # REGRA 4: Padrão (Verificar Banco)
-            else:
+            if is_intervalo_especial:
+                id_padrao = f"{data_para_id}_{horario}_{barbeiro}"
+                id_bloqueado = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO"
                 if id_padrao in ocupados_map:
                     dados_agendamento = ocupados_map[id_padrao]
                     nome = dados_agendamento.get("nome", "Ocupado")
-                    status = "ocupado"
-                    if nome == "Almoço": status, texto_botao = "almoco", "Almoço"
-                    elif nome == "Fechado": status, texto_botao = "fechado", "Fechado"
-                    else: status, texto_botao = "ocupado", nome
+                    status, texto_botao = ("fechado" if nome == "Fechado" else "ocupado"), nome
                 elif id_bloqueado in ocupados_map:
                     status, texto_botao, dados_agendamento = "ocupado", "Bloqueado", {"nome": "BLOQUEADO"}
 
+        # REGRAS PARA DIAS NORMAIS
+            else:
+                id_padrao = f"{data_para_id}_{horario}_{barbeiro}"
+                id_bloqueado = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO"
+
+            # REGRA 1: Horários Especiais (SDJ, 8h)
+                if horario in ["07:00", "07:30"]:
+                    status, texto_botao, is_clicavel = "indisponivel", "SDJ", False
+                elif horario == "08:00" and barbeiro == "Lucas Borges":
+                    status, texto_botao, is_clicavel = "indisponivel", "Indisponível", False
+                # REGRA 2: Domingo
+                elif dia_semana == 6:
+                    status, texto_botao, is_clicavel = "fechado", "Fechado", False
+                # REGRA 3: Almoço
+                elif dia_semana < 5 and hora_int in [12, 13]:
+                    dados_agendamento = ocupados_map.get(id_padrao)
+                    if dados_agendamento and dados_agendamento.get('nome') == 'Fechado':
+                        status, texto_botao, is_clicavel = "fechado", "Fechado", True
+                    else:
+                        status, texto_botao, is_clicavel = "almoco", "Almoço", True
+                # REGRA 4: Padrão (Verificar Banco)
+                else:
+                    if id_padrao in ocupados_map:
+                        dados_agendamento = ocupados_map[id_padrao]
+                        nome = dados_agendamento.get("nome", "Ocupado")
+                        status = "ocupado"
+                        if nome == "Almoço": status, texto_botao = "almoco", "Almoço"
+                        elif nome == "Fechado": status, texto_botao = "fechado", "Fechado"
+                        else: status, texto_botao = "ocupado", nome
+                    elif id_bloqueado in ocupados_map:
+                        status, texto_botao, dados_agendamento = "ocupado", "Bloqueado", {"nome": "BLOQUEADO"}
+
         # ===== CÓDIGO DOS BOTÕES RESTAURADO AO SEU PADRÃO ORIGINAL =====
-        key = f"btn_{data_str}_{horario}_{barbeiro}"
-        with grid_cols[i+1]:
-            # Define as cores com base no status final
-            if status == 'disponivel': cor_fundo, cor_texto = '#28a745', 'white'
-            elif status == 'ocupado': cor_fundo, cor_texto = '#dc3545', 'white'
-            elif status == 'almoco': cor_fundo, cor_texto = '#ffc107', 'black'
-            elif status == 'fechado': cor_fundo, cor_texto = '#A9A9A9', 'black'
-            else: cor_fundo, cor_texto, is_clicavel = '#6c757d', 'white', False
+            key = f"btn_{data_str}_{horario}_{barbeiro}"
+            with grid_cols[i+1]:
+                if status == 'disponivel': cor_fundo, cor_texto = '#28a745', 'white'
+                elif status == 'ocupado': cor_fundo, cor_texto = '#dc3545', 'white'
+                elif status == 'almoco': cor_fundo, cor_texto = '#ffc107', 'black'
+                elif status == 'fechado': cor_fundo, cor_texto = '#A9A9A9', 'black'
+                else: cor_fundo, cor_texto, is_clicavel = '#6c757d', 'white', False
 
             # Seu botão HTML customizado que aciona o botão invisível abaixo
-            botao_html = f"""
-                <button style='
-                    background-color: {cor_fundo}; color: {cor_texto}; border: none;
-                    border-radius: 6px; padding: 4px 8px; width: 100%; font-size: 12px;
-                    font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-                    opacity: {1 if is_clicavel else 0.65}; cursor: {'pointer' if is_clicavel else 'not-allowed'};
-                ' onclick="document.getElementById('{key}').click()" {'disabled' if not is_clicavel else ''}>
-                    {texto_botao}
-                </button>
-            """
-            st.markdown(botao_html, unsafe_allow_html=True)
+                botao_html = f"""
+                    <button style='
+                        background-color: {cor_fundo}; color: {cor_texto}; border: none;
+                        border-radius: 6px; padding: 4px 8px; width: 100%; font-size: 12px;
+                        font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                        opacity: {1 if is_clicavel else 0.65}; cursor: {'pointer' if is_clicavel else 'not-allowed'};
+                    ' onclick="document.getElementById('{key}').click()" {'disabled' if not is_clicavel else ''}>
+                        {texto_botao}
+                    </button>
+                """
+                st.markdown(botao_html, unsafe_allow_html=True)
             
             # O botão invisível do Streamlit que realmente executa a ação
             # O primeiro argumento é um caractere vazio para não gerar texto visível
-            if st.button(" ", key=key, disabled=not is_clicavel, use_container_width=True):
-                if status == 'disponivel':
-                    st.session_state.view = 'agendar'
-                    st.session_state.agendamento_info = {
-                        'data_obj': data_obj,
-                        'horario': horario,
-                        'barbeiro': barbeiro
-                    }
-                    st.rerun()
-                elif status in ['ocupado', 'almoco', 'fechado']:
-                    st.session_state.view = 'cancelar'
-                    st.session_state.agendamento_info = {
-                        'data_obj': data_obj,
-                        'horario': horario,
-                        'barbeiro': barbeiro,
-                        'dados': dados_agendamento
-                    }
-                    st.rerun()
-
-
+                if st.button(" ", key=key, disabled=not is_clicavel, use_container_width=True):
+                    if status == 'disponivel':
+                        st.session_state.view = 'agendar'
+                        st.session_state.agendamento_info = {
+                            'data_obj': data_obj,
+                            'horario': horario,
+                            'barbeiro': barbeiro
+                        }
+                        st.rerun()
+                    elif status in ['ocupado', 'almoco', 'fechado']:
+                        st.session_state.view = 'cancelar'
+                        st.session_state.agendamento_info = {
+                            'data_obj': data_obj,
+                            'horario': horario,
+                            'barbeiro': barbeiro,
+                            'dados': dados_agendamento
+                        }
+                        st.rerun()
+    
+    
+    
