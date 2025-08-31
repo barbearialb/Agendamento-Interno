@@ -614,8 +614,6 @@ else:
                 id_bloqueado = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO"
                     
 
-            # REGRAS PARA DIAS NORMAIS (FORA DO INTERVALO ESPECIAL)
-            else:
                 # REGRA 1: Horários das 7h (SDJ)
                 if horario in ["07:00", "07:30"]:
                     status, texto_botao, is_clicavel = "indisponivel", "SDJ", False
@@ -706,6 +704,7 @@ else:
                         st.rerun()
                         
     
+
 
 
 
