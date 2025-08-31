@@ -641,6 +641,67 @@ else:
                     status, texto_botao, dados_agendamento = "ocupado", "Bloqueado", {"nome": "BLOQUEADO"}
 
         # ===== CÓDIGO DOS BOTÕES RESTAURADO AO SEU PADRÃO ORIGINAL =====
+        for horario in horarios_tabela:
+    grid_cols = st.columns([1.5, 3, 3])
+    grid_cols[0].markdown(f"#### {horario}")
+
+    for i, barbeiro in enumerate(barbeiros):
+        status = "disponivel"
+        texto_botao = "Disponível"
+        dados_agendamento = {}
+        is_clicavel = True
+
+        # --- LÓGICA DE DATAS E HORÁRIOS ---
+        dia_mes = data_obj.day
+        mes_ano = data_obj.month
+        dia_semana = data_obj.weekday()
+        is_intervalo_especial = (mes_ano == 7 and 10 <= dia_mes <= 19)
+        hora_int = int(horario.split(':')[0])
+
+        # REGRA 0: DURANTE O INTERVALO ESPECIAL
+        if is_intervalo_especial:
+            id_padrao = f"{data_para_id}_{horario}_{barbeiro}"
+            id_bloqueado = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO"
+            if id_padrao in ocupados_map:
+                dados_agendamento = ocupados_map[id_padrao]
+                nome = dados_agendamento.get("nome", "Ocupado")
+                status, texto_botao = ("fechado" if nome == "Fechado" else "ocupado"), nome
+            elif id_bloqueado in ocupados_map:
+                status, texto_botao, dados_agendamento = "ocupado", "Bloqueado", {"nome": "BLOQUEADO"}
+
+        # REGRAS PARA DIAS NORMAIS
+        else:
+            id_padrao = f"{data_para_id}_{horario}_{barbeiro}"
+            id_bloqueado = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO"
+
+            # REGRA 1: Horários Especiais (SDJ, 8h)
+            if horario in ["07:00", "07:30"]:
+                status, texto_botao, is_clicavel = "indisponivel", "SDJ", False
+            elif horario == "08:00" and barbeiro == "Lucas Borges":
+                status, texto_botao, is_clicavel = "indisponivel", "Indisponível", False
+            # REGRA 2: Domingo
+            elif dia_semana == 6:
+                status, texto_botao, is_clicavel = "fechado", "Fechado", False
+            # REGRA 3: Almoço
+            elif dia_semana < 5 and hora_int in [12, 13]:
+                dados_agendamento = ocupados_map.get(id_padrao)
+                if dados_agendamento and dados_agendamento.get('nome') == 'Fechado':
+                    status, texto_botao, is_clicavel = "fechado", "Fechado", True
+                else:
+                    status, texto_botao, is_clicavel = "almoco", "Almoço", True
+            # REGRA 4: Padrão (Verificar Banco)
+            else:
+                if id_padrao in ocupados_map:
+                    dados_agendamento = ocupados_map[id_padrao]
+                    nome = dados_agendamento.get("nome", "Ocupado")
+                    status = "ocupado"
+                    if nome == "Almoço": status, texto_botao = "almoco", "Almoço"
+                    elif nome == "Fechado": status, texto_botao = "fechado", "Fechado"
+                    else: status, texto_botao = "ocupado", nome
+                elif id_bloqueado in ocupados_map:
+                    status, texto_botao, dados_agendamento = "ocupado", "Bloqueado", {"nome": "BLOQUEADO"}
+
+        # ===== CÓDIGO DOS BOTÕES RESTAURADO AO SEU PADRÃO ORIGINAL =====
         key = f"btn_{data_str}_{horario}_{barbeiro}"
         with grid_cols[i+1]:
             # Define as cores com base no status final
