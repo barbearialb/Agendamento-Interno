@@ -609,6 +609,10 @@ else:
                     status, texto_botao = ("fechado" if nome == "Fechado" else "ocupado"), nome
                 elif id_bloqueado in ocupados_map:
                     status, texto_botao, dados_agendamento = "ocupado", "Bloqueado", {"nome": "BLOQUEADO"}
+            else:
+                id_padrao = f"{data_para_id}_{horario}_{barbeiro}"
+                id_bloqueado = f"{data_para_id}_{horario}_{barbeiro}_BLOQUEADO"
+                    
 
             # REGRAS PARA DIAS NORMAIS (FORA DO INTERVALO ESPECIAL)
             else:
@@ -625,8 +629,15 @@ else:
 
                 # REGRA 3: Almoço durante a semana (12h e 13h)
                 elif dia_semana < 5 and hora_int in [12, 13]:
-                     status, texto_botao, is_clicavel = "almoco", "Almoço", False
-                
+                    dados_agendamento = ocupados_map.get(id_padrao)
+                    if dados_agendamento and dados_agendamento.get('nome') == 'Fechado':
+                        status = "fechado"
+                        texto_botao = "Fechado"
+                        is_clicavel = True # Permite clicar para gerenciar (reabrir)
+                    else:
+                        status = "almoco"
+                        texto_botao = "Almoço"
+                        is_clicavel = True
 
                 # REGRA 4: Se não for nenhuma regra acima, busca no banco
                 else:
@@ -645,22 +656,21 @@ else:
             key = f"btn_{data_str}_{horario}_{barbeiro}"
             with grid_cols[i+1]:
                 if status == 'disponivel':
-                    cor_fundo = '#28a745'  # Verde
-                    # O 'texto_botao' e 'is_clicavel' já foram definidos antes, mas aqui garantimos o padrão
+                    cor_fundo = '#28a745'
+                    cor_texto = 'white'
                 elif status == 'ocupado':
-                    cor_fundo = '#dc3545'  # Vermelho
+                    cor_fundo = '#dc3545'
+                    cor_texto = 'white'
                 elif status == 'almoco':
-                    cor_fundo = '#ffc107'  # Laranja/Amarelo
-                    is_clicavel = False # Garante que não é clicável
-                elif status == 'indisponivel':
-                    cor_fundo = '#808080'  # Cinza
-                    is_clicavel = False # Garante que não é clicável
+                    cor_fundo = '#ffc107'
+                    cor_texto = 'black'
                 elif status == 'fechado':
-                     cor_fundo = '#A9A9A9' # Cinza claro
-                     is_clicavel = False
-                else: # Caso padrão
+                    cor_fundo = '#A9A9A9'
+                    cor_texto = 'black'
+                else: 
                     cor_fundo = '#6c757d'
-                    is_clicavel = False
+                    cor_texto = 'white'
+                    is_clicavel = False 
                 
                 cor_texto = "black" if status == "almoco" or status == "fechado" else "white"
                 
@@ -675,19 +685,20 @@ else:
                 st.markdown(f"<div style='text-align: center; font-size: 12px; color: #AAA;'>{barbeiro}</div>", unsafe_allow_html=True)
 
                 # O botão invisível que aciona a lógica, com as chamadas CORRIGIDAS
-                if st.button("", key=key, disabled=not is_clicavel):
+                if st.button(texto_botao, key=key, disabled=not is_clicavel, use_container_width=True):
                     if status == 'disponivel':
                         st.session_state.view = 'agendar'
                         st.session_state.agendamento_info = {
-                            'data_obj': data_obj, # Passa o objeto de data
+                            'data_obj': data_obj,
                             'horario': horario,
                             'barbeiro': barbeiro
                         }
                         st.rerun()
+                # Agora, 'almoco' e 'fechado' também levam para a tela de gerenciamento
                     elif status in ['ocupado', 'almoco', 'fechado']:
                         st.session_state.view = 'cancelar'
                         st.session_state.agendamento_info = {
-                            'data_obj': data_obj, # Passa o objeto de data
+                            'data_obj': data_obj,
                             'horario': horario,
                             'barbeiro': barbeiro,
                             'dados': dados_agendamento
@@ -695,6 +706,7 @@ else:
                         st.rerun()
                         
     
+
 
 
 
