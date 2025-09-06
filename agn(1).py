@@ -102,25 +102,25 @@ barbeiros = ["Aluizio", "Lucas Borges"]
 
 
 # --- FUNÇÕES DE BACKEND (Adaptadas e Novas) ---
-
-def enviar_email(assunto, mensagem):
+# VERSÃO CORRETA DA FUNÇÃO
+def enviar_email(assunto, mensagem, email_remetente, senha_remetente):
     """
-    Envia um e-mail usando as credenciais fornecidas.
+    Envia um e-mail usando as credenciais fornecidas como parâmetros.
     """
-    # A verificação usa os parâmetros em vez das variáveis globais
     if not email_remetente or not senha_remetente:
         st.warning("Credenciais de e-mail não configuradas para envio.")
         return
     try:
         msg = MIMEText(mensagem)
         msg['Subject'] = assunto
-        msg['From'] = EMAIL
-        msg['To'] = EMAIL
-        server.login(email_remetente, senha_remetente)
+        msg['From'] = email_remetente
+        msg['To'] = email_remetente  # Envia para o próprio e-mail como notificação
+
         with smtplib.SMTP('smtp.gmail.com', 587) as server:
             server.starttls()
-            server.login(EMAIL, SENHA)
-            server.sendmail(EMAIL, EMAIL, msg.as_string())
+            # Usa os parâmetros recebidos para fazer o login
+            server.login(email_remetente, senha_remetente)
+            server.sendmail(email_remetente, email_remetente, msg.as_string())
     except Exception as e:
         st.error(f"Erro ao enviar e-mail: {e}")
 
@@ -419,6 +419,9 @@ elif st.session_state.view == 'cancelar':
 
                 st.success("Horário liberado com sucesso!")
                 
+                assunto_email = f"Cancelamento/Liberação: {nome} em {data_str_display}"
+                mensagem_email = f"O agendamento para {nome} às {horario} com {barbeiro} foi cancelado/liberado."
+                
                 # Enviamos o e-mail com os dados corretos
                 enviar_email(assunto_email, mensagem_email, EMAIL, SENHA)
                 
@@ -701,6 +704,7 @@ else:
                         st.rerun()
                         
     
+
 
 
 
