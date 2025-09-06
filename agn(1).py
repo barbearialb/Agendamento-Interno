@@ -104,14 +104,19 @@ barbeiros = ["Aluizio", "Lucas Borges"]
 # --- FUNÇÕES DE BACKEND (Adaptadas e Novas) ---
 
 def enviar_email(assunto, mensagem):
-    if not EMAIL or not SENHA:
-        st.warning("Credenciais de e-mail não configuradas.")
+    """
+    Envia um e-mail usando as credenciais fornecidas.
+    """
+    # A verificação usa os parâmetros em vez das variáveis globais
+    if not email_remetente or not senha_remetente:
+        st.warning("Credenciais de e-mail não configuradas para envio.")
         return
     try:
         msg = MIMEText(mensagem)
         msg['Subject'] = assunto
         msg['From'] = EMAIL
         msg['To'] = EMAIL
+        server.login(email_remetente, senha_remetente)
         with smtplib.SMTP('smtp.gmail.com', 587) as server:
             server.starttls()
             server.login(EMAIL, SENHA)
@@ -346,7 +351,7 @@ if st.session_state.view == 'agendar':
                                 f"Horário: {horario}\nBarbeiro: {barbeiro}\n"
                                 f"Serviços: {', '.join(servicos_selecionados) if servicos_selecionados else 'Nenhum'}"
                             )
-                            enviar_email(assunto_email, mensagem_email)
+                            enviar_email(assunto_email, mensagem_email, EMAIL, SENHA)
                             
                             st.cache_data.clear()
                             st.session_state.view = 'agenda'
@@ -415,8 +420,7 @@ elif st.session_state.view == 'cancelar':
                 st.success("Horário liberado com sucesso!")
                 
                 # Enviamos o e-mail com os dados corretos
-                assunto_email = f"Cancelamento/Liberação: {nome} em {data_str_display}"
-                enviar_email(assunto_email, f"O agendamento para {nome} às {horario} com {barbeiro} foi cancelado/liberado.")
+                enviar_email(assunto_email, mensagem_email, EMAIL, SENHA)
                 
                 # Voltamos para a tela da agenda
                 st.session_state.view = 'agenda'
@@ -697,6 +701,7 @@ else:
                         st.rerun()
                         
     
+
 
 
 
